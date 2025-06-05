@@ -1006,6 +1006,15 @@ UID: {user_id} 此 ID 可用于设置管理员。
     @filter.permission_type(filter.PermissionType.ADMIN)
     @filter.command("persona")
     async def persona(self, message: AstrMessageEvent):
+        # 新增权限检查
+        is_private = not message.get_group_id()
+        is_admin = message.role == "admin"
+
+        if not (is_admin or is_private):
+            message.set_result(
+                MessageEventResult().message("此指令仅限管理员或在私聊中使用。")
+            )
+            return
         l = message.message_str.split(" ")  # noqa: E741
 
         curr_persona_name = "无"

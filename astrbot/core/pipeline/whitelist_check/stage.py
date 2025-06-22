@@ -8,7 +8,7 @@ from astrbot.core import logger
 
 @register_stage
 class WhitelistCheckStage(Stage):
-    """检查是否在群聊/私聊白名单"""
+    """检查是否在群聊/私聊白名单或黑名单"""
 
     async def initialize(self, ctx: PipelineContext) -> None:
         self.enable_whitelist_check = ctx.astrbot_config["platform_settings"][
@@ -25,10 +25,34 @@ class WhitelistCheckStage(Stage):
             "wl_ignore_admin_on_friend"
         ]
         self.wl_log = ctx.astrbot_config["platform_settings"]["id_whitelist_log"]
+        self.enable_blacklist_check = ctx.astrbot_config["platform_settings"].get(
+            "enable_id_black_list", False
+        )
+        self.blacklist = ctx.astrbot_config["platform_settings"].get("id_blacklist", [])
+        self.blacklist = [
+            str(i).strip() for i in self.blacklist if str(i).strip() != ""
+        ]
+        self.bl_log = ctx.astrbot_config["platform_settings"].get(
+            "id_blacklist_log", True
+        )
 
     async def process(
         self, event: AstrMessageEvent
     ) -> Union[None, AsyncGenerator[None, None]]:
+        if self.enable_blacklist_check:
+            sender = str(event.get_sender_id()).strip()
+            if (
+                event.unified_msg_origin in self.blacklist
+                or sender in self.blacklist
+                or str(event.get_group_id()).strip() in self.blacklist
+            ):
+                if self.bl_log:
+                    logger.info(
+                        f"会话 ID {event.unified_msg_origin} 在会话黑名单中，已终止事件传播。"
+                    )
+                event.stop_event()
+                return
+
         if not self.enable_whitelist_check:
             # 白名单检查未启用
             return

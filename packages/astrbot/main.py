@@ -417,6 +417,34 @@ UID: {user_id} 此 ID 可用于设置管理员。
             event.set_result(MessageEventResult().message("此 SID 不在白名单内。"))
 
     @filter.permission_type(filter.PermissionType.ADMIN)
+    @filter.command("bl")
+    async def bl(self, event: AstrMessageEvent, uid: str = None):
+        """添加黑名单。bl <uid>"""
+        if uid is None:
+            event.set_result(
+                MessageEventResult().message(
+                    "使用方法: /bl <id> 添加黑名单；/dbl <id> 删除黑名单。可通过 /sid 获取 ID。"
+                )
+            )
+            return
+        self.context.get_config()["platform_settings"]["id_blacklist"].append(str(uid))
+        self.context.get_config().save_config()
+        event.set_result(MessageEventResult().message("添加黑名单成功。"))
+
+    @filter.permission_type(filter.PermissionType.ADMIN)
+    @filter.command("dbl")
+    async def dbl(self, event: AstrMessageEvent, uid: str):
+        """删除黑名单。dbl <uid>"""
+        try:
+            self.context.get_config()["platform_settings"]["id_blacklist"].remove(
+                str(uid)
+            )
+            self.context.get_config().save_config()
+            event.set_result(MessageEventResult().message("删除黑名单成功。"))
+        except ValueError:
+            event.set_result(MessageEventResult().message("此 ID 不在黑名单内。"))
+
+    @filter.permission_type(filter.PermissionType.ADMIN)
     @filter.command("provider")
     async def provider(
         self, event: AstrMessageEvent, idx: Union[str, int] = None, idx2: int = None

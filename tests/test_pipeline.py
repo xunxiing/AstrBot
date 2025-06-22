@@ -51,7 +51,7 @@ TEST_COMMANDS = [
     ["bl bl_user", "该 ID 已在黑名单中"],
     ["bl bad_user", "添加黑名单成功。"],
     ["dbl bad_user", "删除黑名单成功。"],
-    ["bl list", "黑名单"],
+    ["bl list", f"黑名单：\n{BLACKLIST_USER}"],
     ["provider", "当前载入的 LLM 提供商"],
     ["reset", "重置成功"],
     # ["model", "查看、切换提供商模型列表"],
@@ -256,6 +256,21 @@ async def test_pipeline_blacklist(
     assert any(
         "不在会话白名单中，已终止事件传播。" in message for message in caplog.messages
     ), "日志中未找到预期的消息"
+
+
+@pytest.mark.asyncio
+async def test_pipeline_blacklist_disabled(
+    pipeline_scheduler: PipelineScheduler, config: AstrBotConfig, caplog
+):
+    caplog.clear()
+    config["platform_settings"]["enable_id_black_list"] = False
+    mock_event = FakeAstrMessageEvent.create_fake_event(
+        "test", SESSION_ID_IN_WHITELIST, sender_id=BLACKLIST_USER
+    )
+    with caplog.at_level(logging.INFO):
+        await pipeline_scheduler.execute(mock_event)
+    assert not any("黑名单" in message for message in caplog.messages)
+    config["platform_settings"]["enable_id_black_list"] = True
 
 
 @pytest.mark.asyncio

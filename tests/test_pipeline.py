@@ -22,6 +22,7 @@ from asyncio import Queue
 
 SESSION_ID_IN_WHITELIST = "test_sid_wl"
 SESSION_ID_NOT_IN_WHITELIST = "test_sid"
+BLACKLIST_USER = "bl_user"
 TEST_LLM_PROVIDER = {
     "id": "zhipu_default",
     "type": "openai_chat_completion",
@@ -45,6 +46,8 @@ TEST_COMMANDS = [
     ["deop test_op", "取消授权成功。"],
     ["wl test_platform:FriendMessage:test_sid_wl2", "添加白名单成功。"],
     ["dwl test_platform:FriendMessage:test_sid_wl2", "删除白名单成功。"],
+    ["bl bad_user", "添加黑名单成功。"],
+    ["dbl bad_user", "删除黑名单成功。"],
     ["provider", "当前载入的 LLM 提供商"],
     ["reset", "重置成功"],
     # ["model", "查看、切换提供商模型列表"],
@@ -105,6 +108,8 @@ def config():
         "test_platform:FriendMessage:test_sid_wl",
         "test_platform:GroupMessage:test_sid_wl",
     ]
+    cfg["platform_settings"]["id_blacklist"] = [BLACKLIST_USER]
+    cfg["platform_settings"]["enable_id_black_list"] = True
     cfg["admins_id"] = ["123456"]
     cfg["content_safety"]["internal_keywords"]["extra_keywords"] = ["^TEST_NEGATIVE"]
     cfg["provider"] = [TEST_LLM_PROVIDER]
@@ -205,6 +210,21 @@ async def test_pipeline_wl(
         "不在会话白名单中，已终止事件传播。" not in message
         for message in caplog.messages
     ), "日志中未找到预期的消息"
+
+
+@pytest.mark.asyncio
+async def test_pipeline_blacklist(
+    pipeline_scheduler: PipelineScheduler, config: AstrBotConfig, caplog
+):
+    caplog.clear()
+    mock_event = FakeAstrMessageEvent.create_fake_event(
+        "test", SESSION_ID_IN_WHITELIST, sender_id=BLACKLIST_USER
+    )
+    with caplog.at_level(logging.INFO):
+        await pipeline_scheduler.execute(mock_event)
+    assert any("黑名单" in message for message in caplog.messages), (
+        "日志中未找到预期的消息"
+    )
 
     mock_event = FakeAstrMessageEvent.create_fake_event("test", sender_id="123")
     with caplog.at_level(logging.INFO):
